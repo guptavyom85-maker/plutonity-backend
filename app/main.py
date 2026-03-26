@@ -15,7 +15,7 @@ app = FastAPI(
 # Without this, browsers block cross-origin requests
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://plutonity-frontend.vercel.app"],
+    allow_origins=["http://localhost:3000", "https://plutonity-frontend.vercel.app",'https://*.vercel.app'],
     allow_credentials=True,
     allow_methods=["*"],    # allow GET, POST, PUT, DELETE etc
     allow_headers=["*"],    # allow all headers including Authorization
