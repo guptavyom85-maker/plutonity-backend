@@ -5,11 +5,15 @@ import os
 
 load_dotenv()
 
+# Use REDIS_URL env variable
+# On localhost it falls back to localhost:6379
+redis_url = os.getenv("REDIS_URL", "redis://default:ZJtJOdQdotAOwpdDyNyaebdtGIjXerNE@ballast.proxy.rlwy.net:51292")
+
 celery_app = Celery(
     "plutonity",
-    broker="redis://localhost:6379/0",
-    backend="redis://localhost:6379/0",
-    include=["app.tasks"]       # ← THIS is what was missing
+    broker=redis_url,
+    backend=redis_url,
+    include=["app.tasks"]
 )
 
 celery_app.conf.update(
