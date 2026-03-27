@@ -99,3 +99,27 @@ async def get_current_user(
         raise
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+
+@router.get("/profile")
+async def get_profile(current_user=Depends(get_current_user)):
+    try:
+        profile = supabase.table("profiles")\
+            .select("username")\
+            .eq("id", current_user.id)\
+            .single()\
+            .execute()
+
+        if not profile.data:
+            # First time Google sign in — create profile
+            username = current_user.email.split("@")[0]
+            supabase.table("profiles").insert({
+                "id": current_user.id,
+                "username": username
+            }).execute()
+            return {"username": username}
+
+        return {"username": profile.data["username"]}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
