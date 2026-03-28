@@ -15,15 +15,13 @@ async def submit_backtest(
     current_user=Depends(get_current_user)
 ):
     try:
-        # ── SAFETY CHECK: ensure profile exists for this user ──
-        # Google OAuth users sometimes miss the trigger
+        # ── SAFETY CHECK: ensure profile exists ──
         existing_profile = supabase.table("profiles")\
             .select("id")\
             .eq("id", current_user.id)\
             .execute()
 
         if not existing_profile.data:
-            # Create missing profile
             username = current_user.email.split("@")[0]
             supabase.table("profiles").insert({
                 "id": current_user.id,
@@ -31,16 +29,28 @@ async def submit_backtest(
             }).execute()
             print(f"Created missing profile for {current_user.email}")
 
-        # rest of your existing code stays exactly the same...
+        # ── SAVE STRATEGY ──
         strategy_id = str(uuid.uuid4())
         supabase.table("strategies").insert({
+            "id": strategy_id,
+            "user_id": current_user.id,
+            "name": request.strategy_name,
+            "code": request.code,
+            "ticker": request.ticker,
+            "start_date": request.start_date,
+            "end_date": request.end_date
+        }).execute()
+
+        # ── CREATE PENDING RESULT ──
+        result_id = str(uuid.uuid4())
+        supabase.table("backtest_results").insert({
             "id": result_id,
             "strategy_id": strategy_id,
             "user_id": current_user.id,
             "status": "pending"
         }).execute()
 
-        # Queue the task
+        # ── QUEUE THE TASK ──
         run_backtest_task.delay(
             result_id=result_id,
             strategy_id=strategy_id,
@@ -106,8 +116,6 @@ async def get_result(
             .single()\
             .execute()
 
-        print(f"RESULT DATA: {result.data}")
-
         if not result.data:
             raise HTTPException(status_code=404, detail="Result not found")
 
@@ -121,6 +129,10 @@ async def get_result(
             max_drawdown=data.get("max_drawdown"),
             total_return=data.get("total_return"),
             final_value=data.get("final_value"),
+            sortino_ratio=data.get("sortino_ratio"),
+            win_rate=data.get("win_rate"),
+            n_days=data.get("n_days"),
+            n_years=data.get("n_years"),
             error_message=data.get("error_message")
         )
 
