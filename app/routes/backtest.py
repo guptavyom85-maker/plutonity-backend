@@ -15,21 +15,25 @@ async def submit_backtest(
     current_user=Depends(get_current_user)
 ):
     try:
-        # Save strategy to DB
+        # ── SAFETY CHECK: ensure profile exists for this user ──
+        # Google OAuth users sometimes miss the trigger
+        existing_profile = supabase.table("profiles")\
+            .select("id")\
+            .eq("id", current_user.id)\
+            .execute()
+
+        if not existing_profile.data:
+            # Create missing profile
+            username = current_user.email.split("@")[0]
+            supabase.table("profiles").insert({
+                "id": current_user.id,
+                "username": username
+            }).execute()
+            print(f"Created missing profile for {current_user.email}")
+
+        # rest of your existing code stays exactly the same...
         strategy_id = str(uuid.uuid4())
         supabase.table("strategies").insert({
-            "id": strategy_id,
-            "user_id": current_user.id,
-            "name": request.strategy_name,
-            "code": request.code,
-            "ticker": request.ticker,
-            "start_date": request.start_date,
-            "end_date": request.end_date
-        }).execute()
-
-        # Create pending result record
-        result_id = str(uuid.uuid4())
-        supabase.table("backtest_results").insert({
             "id": result_id,
             "strategy_id": strategy_id,
             "user_id": current_user.id,
