@@ -56,7 +56,7 @@ def get_price_data(ticker: str, start_date: str, end_date: str) -> pd.DataFrame:
         df.columns = df.columns.get_level_values(0)
 
     # Keep only what we need
-    df = df[["Open", "High", "Low", "Close", "Volume"]]
+    
     df.dropna(inplace=True)
 
     # Validate minimum data
