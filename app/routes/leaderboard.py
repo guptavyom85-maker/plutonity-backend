@@ -11,33 +11,43 @@ async def get_leaderboard():
         result = supabase.table("leaderboard")\
             .select("""
                 score,
+                user_id,
                 strategies(name),
-                profiles(username),
                 backtest_results(total_return)
             """)\
             .order("score", desc=True)\
             .limit(10)\
             .execute()
 
-        print(f"LEADERBOARD DATA: {result.data}")
+        print(f"LEADERBOARD RAW DATA: {result.data}")
 
         if not result.data:
-            print("LEADERBOARD: no entries found")
             return LeaderboardResponse(entries=[])
 
         entries = []
         for i, row in enumerate(result.data):
-            print(f"ROW {i}: {row}")
             try:
-                entries.append(LeaderboardEntry(
+                # Fetch username separately
+                profile = supabase.table("profiles")\
+                    .select("username")\
+                    .eq("id", row["user_id"])\
+                    .single()\
+                    .execute()
+
+                username = profile.data["username"] if profile.data else "unknown"
+
+                entry = LeaderboardEntry(
                     rank=i + 1,
-                    username=row["profiles"]["username"],
+                    username=username,
                     strategy_name=row["strategies"]["name"],
                     score=round(row["score"], 3),
-                    total_return=round(row["backtest_results"]["total_return"], 3)
-                ))
+                    total_return=round(
+                        row["backtest_results"]["total_return"], 3
+                    )
+                )
+                entries.append(entry)
             except Exception as row_error:
-                print(f"ROW {i} ERROR: {str(row_error)} — row data: {row}")
+                print(f"ROW {i} FAILED: {str(row_error)}")
                 continue
 
         return LeaderboardResponse(entries=entries)
